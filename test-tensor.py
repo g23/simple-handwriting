@@ -20,13 +20,13 @@ mnist = tf.keras.datasets.mnist
 x_train = x_train / 255.0
 x_test = x_test / 255.0
 
-#model = create_model()
+model = create_model()
 # train and save
-#model.fit(x_train, y_train, epochs=5)
-#model.save("test_model.h5")
+model.fit(x_train, y_train, epochs=5)
+model.save("test_model.h5")
 
 # now load the data instead
-model = tf.keras.models.load_model("test_model.h5")
+#model = tf.keras.models.load_model("test_model.h5")
 
 # evaluate the results
 model.evaluate(x_test, y_test)
