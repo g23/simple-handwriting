@@ -1,0 +1,136 @@
+<!doctype html>
+<html>
+<body>
+<h1>Tensorflow demo!</h1>
+<p>
+    Draw a number between 0 and 9 below. Then click the "recognize" button.
+</p>
+<canvas id="drawing" width="140" height="140" style="border: 1px solid black"></canvas>
+<br>
+<button id="recognize">Recognize</button><button id="clear">Clear</button>
+<img id="scaled"/>
+<h3 id="answer"></h3>
+<script>
+// make drawing work
+var drawing = document.getElementById("drawing")
+var ctx = drawing.getContext("2d")
+
+var initCanvas = () => {
+    ctx.fillStyle = "black"
+    ctx.fillRect(0,0, drawing.width, drawing.height)
+
+    ctx.fillStyle = "white"
+    ctx.strokeStyle = "white"
+    ctx.lineWidth = 10
+}
+
+initCanvas()
+
+var x, y;
+
+var mouseDown = false
+
+ 
+var down = (evt) => {
+    mouseDown = true
+    x = evt.offsetX
+    y = evt.offsetY
+    //console.log(evt.offsetX, evt.offsetY)
+    ctx.beginPath()
+    ctx.arc(x, y, 5, 0, 2*Math.PI, true)
+    ctx.fill()
+}
+drawing.onmousedown = down
+drawing.ontouchstart = down
+
+
+var move = (evt) => {
+    let newX = evt.offsetX
+    let newY = evt.offsetY
+    if (mouseDown) {
+        ctx.beginPath()
+        
+        ctx.arc(x, y, 5, 0, 2*Math.PI)
+        ctx.fill()
+
+        ctx.beginPath()
+        ctx.moveTo(x, y)
+        ctx.lineTo(newX, newY)
+        ctx.stroke()
+    }
+    x = newX
+    y = newY
+}
+
+drawing.onmousemove = move
+drawing.ontouchmove = move
+
+
+var up = (evt) => {
+    mouseDown = false
+}
+drawing.onmouseup = up
+drawing.onmousecancel = up
+drawing.ontouchstop = up
+
+
+var recog = document.getElementById("recognize")
+var answer = document.getElementById("answer")
+
+recog.onclick = () => {
+
+    answer.innerHTML = "Thinking...";
+    start = new Date()
+    // need to scale down to 28x28
+    
+    // temp canvas
+    var sCanvas = document.createElement("canvas")
+    sCanvas.width = 28
+    sCanvas.height = 28
+    var sCtx = sCanvas.getContext("2d")
+
+    var dataURL = drawing.toDataURL()
+    var img = new Image()
+    img.src = dataURL
+    img.width = 28
+    img.height = 28
+    img.onload = async () => {
+        sCtx.drawImage(img, 0, 0, 28, 28)
+        // now can get the image data
+        var data = sCtx.getImageData(0,0,28,28).data
+        var res = []
+        for (var i=0; i<28; i++) {
+            res.push([])
+            for (var j=0; j<28; j++) {
+                res[i][j] = data[4*(28*i + j)]
+            }
+        }
+        console.log("res:", res)
+        let resp = await fetch('/recog', {
+            method: 'POST',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({data: res})
+        });
+        let content = await resp.json();
+        var end = new Date()
+        console.log("Model load time: " + content.loadT)
+        console.log("Compute time:" + content.computeT)
+        console.log("total round-trip time: "+(end-start)/1000+"s")
+        
+        answer.innerHTML = "Did you draw a "+content.answer+"?"
+    }
+    
+    //document.body.appendChild(sCanvas)
+}
+
+var clearBtn = document.getElementById("clear")
+clearBtn.onclick = () => {
+    initCanvas()
+}
+
+</script>
+</body>
+</html>
